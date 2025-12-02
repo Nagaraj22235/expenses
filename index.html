@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Monthly Expense Tracker</h1>
+        
+        <div class="budget-section">
+            <h2>Set Monthly Budget</h2>
+            <input type="number" id="budget" placeholder="Enter monthly budget" min="0">
+            <button id="set-budget">Set Budget</button>
+            <p id="current-budget">Current Budget: $0</p>
+        </div>
+        
+        <div class="add-expense-section">
+            <h2>Add Daily Expense</h2>
+            <input type="number" id="amount" placeholder="Amount" min="0" step="0.01">
+            <select id="category">
+                <option value="food">Food</option>
+                <option value="travel">Travel</option>
+                <option value="other">Other</option>
+            </select>
+            <button id="add-expense">Add Expense</button>
+        </div>
+        
+        <div class="summary-section">
+            <h2>Monthly Summary</h2>
+            <p id="total-spent">Total Spent: $0</p>
+            <p id="remaining-budget">Remaining Budget: $0</p>
+        </div>
+        
+        <div class="category-breakdown">
+            <h2>Expenses by Category</h2>
+            <ul id="category-list">
+                <li>Food: $0</li>
+                <li>Travel: $0</li>
+                <li>Other: $0</li>
+            </ul>
+        </div>
+
+        <div class="daily-breakdown">
+            <h2>Expenses by Date</h2>
+            <ul id="daily-list"></ul>
+        </div>
+
+        <div class="expense-list">
+            <h2>Recent Expenses</h2>
+            <ul id="expense-list"></ul>
+        </div>
+    </div>
+    
+    <script src="scripts.js"></script>
+</body>
+</html>
