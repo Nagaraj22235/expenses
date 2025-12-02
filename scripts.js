@@ -74,26 +74,26 @@ function calculateDailyTotals() {
 
 // Update display
 function updateDisplay() {
-    currentBudgetDisplay.textContent = `Current Budget: $${budget.toFixed(2)}`;
-    
+    currentBudgetDisplay.textContent = `Current Budget: ₹${budget.toFixed(2)}`;
+
     const { totals, totalSpent } = calculateTotals();
-    
-    totalSpentDisplay.textContent = `Total Spent: $${totalSpent.toFixed(2)}`;
-    remainingBudgetDisplay.textContent = `Remaining Budget: $${(budget - totalSpent).toFixed(2)}`;
-    
+
+    totalSpentDisplay.textContent = `Total Spent: ₹${totalSpent.toFixed(2)}`;
+    remainingBudgetDisplay.textContent = `Remaining Budget: ₹${(budget - totalSpent).toFixed(2)}`;
+
     categoryList.innerHTML = `
-        <li>Food: $${totals.food.toFixed(2)}</li>
-        <li>Travel: $${totals.travel.toFixed(2)}</li>
-        <li>Other: $${totals.other.toFixed(2)}</li>
+        <li>Food: ₹${totals.food.toFixed(2)}</li>
+        <li>Travel: ₹${totals.travel.toFixed(2)}</li>
+        <li>Other: ₹${totals.other.toFixed(2)}</li>
     `;
 
     const dailyTotals = calculateDailyTotals();
-    dailyList.innerHTML = dailyTotals.map(([date, total]) => `<li>${date}: $${total.toFixed(2)}</li>`).join('');
+    dailyList.innerHTML = dailyTotals.map(([date, total]) => `<li>${date}: ₹${total.toFixed(2)}</li>`).join('');
 
     expenseList.innerHTML = '';
     expenses.slice(-10).reverse().forEach(expense => {
         const li = document.createElement('li');
-        li.textContent = `$${expense.amount.toFixed(2)} - ${expense.category.charAt(0).toUpperCase() + expense.category.slice(1)} - ${expense.date}`;
+        li.textContent = `₹${expense.amount.toFixed(2)} - ${expense.category.charAt(0).toUpperCase() + expense.category.slice(1)} - ${expense.date}`;
         expenseList.appendChild(li);
     });
 }
