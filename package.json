@@ -1,0 +1,93 @@
+{
+  "name": "monthly-expense-tracker",
+  "version": "2.0.0",
+  "description": "A modern, secure expense tracking application with user authentication and multi-tenant database architecture",
+  "main": "scripts.js",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "setup-db": "node setup_database.js",
+    "install-deps": "npm install"
+  },
+  "keywords": [
+    "expense-tracker",
+    "supabase",
+    "authentication",
+    "crud",
+    "multi-tenant",
+    "javascript",
+    "web-app"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/expense-tracker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/expense-tracker/issues"
+  },
+  "homepage": "https://github.com/your-username/expense-tracker#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "browserslist": [
+    "last 2 versions",
+    "> 1%",
+    "not dead"
+  ],
+  "files": [
+    "index.html",
+    "scripts.js",
+    "styles.css",
+    "config.js",
+    "database_setup.sql",
+    "setup_database.js",
+    "SETUP.md",
+    "README.md"
+  ],
+  "directories": {
+    "doc": "."
+  },
+  "preferGlobal": false,
+  "private": false,
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/your-username"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFiles": [],
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ],
+    "transform": {},
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ]
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es6": true,
+      "node": true
+    },
+    "extends": [
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-console": "off",
+      "no-unused-vars": "warn"
+    }
+  }
+}

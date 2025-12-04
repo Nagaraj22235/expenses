@@ -1,4 +1,13 @@
-// Elements
+// Auth Elements
+const authContainer = document.getElementById('auth-container');
+const appContainer = document.getElementById('app-container');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const signInBtn = document.getElementById('sign-in-btn');
+const signUpBtn = document.getElementById('sign-up-btn');
+const authError = document.getElementById('auth-error');
+
+// App Elements
 const budgetInput = document.getElementById('budget');
 const setBudgetBtn = document.getElementById('set-budget');
 const currentBudgetDisplay = document.getElementById('current-budget');
@@ -18,40 +27,97 @@ const dailyList = document.getElementById('daily-list');
 const expenseList = document.getElementById('expense-list');
 
 // Data
-let budget = parseFloat(localStorage.getItem('budget')) || 0;
-let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-let editingIndex = -1;
+let currentUser = null;
+let budget = 0;
+let expenses = [];
+let editingExpense = null;
 
 // Initialize
-updateDisplay();
+checkAuthState();
 
-// Ensure expenses have id and proper date format (migrate old data)
-expenses = expenses.map(expense => ({
-    id: expense.id || Date.now() + Math.random(),
-    amount: expense.amount,
-    category: expense.category,
-    date: typeof expense.date === 'string' && expense.date.includes('T') ? expense.date : new Date(expense.date).toISOString()
-}));
-
-localStorage.setItem('expenses', JSON.stringify(expenses));
-
-// Get filtered expenses for selected month
-function getFilteredExpenses() {
-    const selectedMonth = monthSelector.value; // "2025-12"
-    if (!selectedMonth) return expenses;
-    const [year, month] = selectedMonth.split('-');
-    return expenses.filter(expense => {
-        const expenseDate = new Date(expense.date);
-        return expenseDate.getFullYear() === parseInt(year) && expenseDate.getMonth() + 1 === parseInt(month);
-    });
+// Auth Functions
+async function checkAuthState() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        currentUser = session.user;
+        showApp();
+        await loadData();
+    } else {
+        showAuth();
+    }
 }
 
-// Set budget
-setBudgetBtn.addEventListener('click', () => {
+function showAuth() {
+    authContainer.style.display = 'block';
+    appContainer.style.display = 'none';
+}
+
+function showApp() {
+    authContainer.style.display = 'none';
+    appContainer.style.display = 'block';
+}
+
+async function loadData() {
+    await loadBudget();
+    await loadExpenses();
+    updateDisplay();
+}
+
+async function loadBudget() {
+    const { data, error } = await supabase.from('budgets').select('amount').single();
+    if (error && error.code !== 'PGRST116') {
+        console.error(error);
+        return;
+    }
+    budget = data ? parseFloat(data.amount) : 0;
+}
+
+async function loadExpenses() {
+    const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('date', { ascending: false });
+    if (error) {
+        console.error(error);
+        return;
+    }
+    expenses = data || [];
+}
+
+// Event Listeners
+signInBtn.addEventListener('click', async () => {
+    const email = authEmail.value;
+    const password = authPassword.value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        authError.textContent = error.message;
+    } else {
+        await checkAuthState();
+    }
+});
+
+signUpBtn.addEventListener('click', async () => {
+    const email = authEmail.value;
+    const password = authPassword.value;
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+        authError.textContent = error.message;
+    } else {
+        authError.textContent = 'Sign up successful! Please check your email for confirmation.';
+    }
+});
+
+setBudgetBtn.addEventListener('click', async () => {
     const newBudget = parseFloat(budgetInput.value);
     if (newBudget > 0) {
+        const { error } = await supabase
+            .from('budgets')
+            .upsert({ user_id: currentUser.id, amount: newBudget });
+        if (error) {
+            alert('Error setting budget: ' + error.message);
+            return;
+        }
         budget = newBudget;
-        localStorage.setItem('budget', budget);
         budgetInput.value = '';
         updateDisplay();
     } else {
@@ -59,19 +125,25 @@ setBudgetBtn.addEventListener('click', () => {
     }
 });
 
-// Add expense
-addExpenseBtn.addEventListener('click', () => {
+addExpenseBtn.addEventListener('click', async () => {
     const amount = parseFloat(amountInput.value);
     const category = categorySelect.value;
     if (amount > 0) {
-        const expense = {
-            id: Date.now() + Math.random(),
-            amount,
-            category,
-            date: new Date().toISOString()
-        };
-        expenses.push(expense);
-        localStorage.setItem('expenses', JSON.stringify(expenses));
+        const { data, error } = await supabase
+            .from('expenses')
+            .insert({
+                user_id: currentUser.id,
+                amount: amount,
+                category: category,
+                date: new Date().toISOString()
+            })
+            .select()
+            .single();
+        if (error) {
+            alert('Error adding expense: ' + error.message);
+            return;
+        }
+        expenses.unshift(data);
         amountInput.value = '';
         updateDisplay();
     } else {
@@ -79,20 +151,72 @@ addExpenseBtn.addEventListener('click', () => {
     }
 });
 
-// Month selector change
+saveEditBtn.addEventListener('click', async () => {
+    const amount = parseFloat(editAmount.value);
+    if (amount > 0 && editingExpense) {
+        const { error } = await supabase
+            .from('expenses')
+            .update({
+                amount: amount,
+                category: editCategory.value
+            })
+            .eq('id', editingExpense.id);
+        if (error) {
+            alert('Error updating expense: ' + error.message);
+            return;
+        }
+        editingExpense.amount = amount;
+        editingExpense.category = editCategory.value;
+        editSection.style.display = 'none';
+        editingExpense = null;
+        updateDisplay();
+    } else {
+        alert('Please enter a valid amount.');
+    }
+});
+
+cancelEditBtn.addEventListener('click', () => {
+    editSection.style.display = 'none';
+    editingExpense = null;
+});
+
 monthSelector.addEventListener('change', updateDisplay);
 
-// Event delegation for dynamic buttons
-expenseList.addEventListener('click', (e) => {
+expenseList.addEventListener('click', async (e) => {
     const target = e.target;
     if (target.classList.contains('edit-btn')) {
         editExpense(target.dataset.id);
     } else if (target.classList.contains('delete-btn')) {
-        deleteExpense(target.dataset.id);
+        await deleteExpense(target.dataset.id);
     }
 });
 
-// Calculate totals
+// CRUD Functions
+function editExpense(id) {
+    const expense = expenses.find(e => e.id == id);
+    if (!expense) return;
+    editingExpense = expense;
+    editAmount.value = expense.amount;
+    editCategory.value = expense.category;
+    editSection.style.display = 'block';
+}
+
+async function deleteExpense(id) {
+    if (confirm('Are you sure you want to delete this expense?')) {
+        const { error } = await supabase
+            .from('expenses')
+            .delete()
+            .eq('id', id);
+        if (error) {
+            alert('Error deleting expense: ' + error.message);
+            return;
+        }
+        expenses = expenses.filter(e => e.id != id);
+        updateDisplay();
+    }
+}
+
+// Utility Functions
 function calculateTotals(filteredExpenses) {
     const totals = { food: 0, travel: 0, other: 0 };
     let totalSpent = 0;
@@ -103,7 +227,6 @@ function calculateTotals(filteredExpenses) {
     return { totals, totalSpent };
 }
 
-// Calculate daily totals
 function calculateDailyTotals(filteredExpenses) {
     const daily = {};
     filteredExpenses.forEach(expense => {
@@ -111,51 +234,19 @@ function calculateDailyTotals(filteredExpenses) {
         if (!daily[displayDate]) daily[displayDate] = 0;
         daily[displayDate] += expense.amount;
     });
-    // Sort dates descending
     return Object.entries(daily).sort((a, b) => new Date(b[0]) - new Date(a[0]));
 }
 
-// Edit expense
-function editExpense(id) {
-    const expense = expenses.find(e => e.id == id);
-    if (!expense) return;
-    editingIndex = expenses.indexOf(expense);
-    editAmount.value = expense.amount;
-    editCategory.value = expense.category;
-    editSection.style.display = 'block';
+function getFilteredExpenses() {
+    const selectedMonth = monthSelector.value;
+    if (!selectedMonth) return expenses;
+    const [year, month] = selectedMonth.split('-');
+    return expenses.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate.getFullYear() === parseInt(year) && expenseDate.getMonth() + 1 === parseInt(month);
+    });
 }
 
-// Delete expense
-function deleteExpense(id) {
-    if (confirm('Are you sure you want to delete this expense?')) {
-        expenses = expenses.filter(e => e.id != id);
-        localStorage.setItem('expenses', JSON.stringify(expenses));
-        updateDisplay();
-    }
-}
-
-// Save edit
-saveEditBtn.addEventListener('click', () => {
-    const amount = parseFloat(editAmount.value);
-    if (amount > 0 && editingIndex !== -1) {
-        expenses[editingIndex].amount = amount;
-        expenses[editingIndex].category = editCategory.value;
-        localStorage.setItem('expenses', JSON.stringify(expenses));
-        editSection.style.display = 'none';
-        editingIndex = -1;
-        updateDisplay();
-    } else {
-        alert('Please enter a valid amount.');
-    }
-});
-
-// Cancel edit
-cancelEditBtn.addEventListener('click', () => {
-    editSection.style.display = 'none';
-    editingIndex = -1;
-});
-
-// Update display
 function updateDisplay() {
     const filteredExpenses = getFilteredExpenses();
 
