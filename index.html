@@ -16,7 +16,12 @@
             <button id="set-budget">Set Budget</button>
             <p id="current-budget">Current Budget: ₹0</p>
         </div>
-        
+
+        <div class="month-selection">
+            <h2>Select Month</h2>
+            <input type="month" id="month-selector" value="2025-12">
+        </div>
+
         <div class="add-expense-section">
             <h2>Add Daily Expense</h2>
             <input type="number" id="amount" placeholder="Amount" min="0" step="0.01">
@@ -26,6 +31,18 @@
                 <option value="other">Other</option>
             </select>
             <button id="add-expense">Add Expense</button>
+        </div>
+
+        <div class="edit-expense-section" id="edit-section" style="display: none;">
+            <h2>Edit Expense</h2>
+            <input type="number" id="edit-amount" placeholder="Amount" min="0" step="0.01">
+            <select id="edit-category">
+                <option value="food">Food</option>
+                <option value="travel">Travel</option>
+                <option value="other">Other</option>
+            </select>
+            <button id="save-edit">Save Changes</button>
+            <button id="cancel-edit">Cancel</button>
         </div>
         
         <div class="summary-section">
