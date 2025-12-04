@@ -18,7 +18,7 @@
         </div>
     </div>
 
-    <div id="app-container" style="display: none;">
+    <div id="app-container" style="display: none;" class="container">
         <h1>Monthly Expense Tracker</h1>
         
         <div class="budget-section">
@@ -41,6 +41,8 @@
                 <option value="travel">Travel</option>
                 <option value="other">Other</option>
             </select>
+            <input type="text" id="other-category" placeholder="Specify other category" style="display: none;">
+            <input type="date" id="expense-date" value="">
             <button id="add-expense">Add Expense</button>
         </div>
 
@@ -52,6 +54,8 @@
                 <option value="travel">Travel</option>
                 <option value="other">Other</option>
             </select>
+            <input type="text" id="edit-other-category" placeholder="Specify other category" style="display: none;">
+            <input type="date" id="edit-expense-date" value="">
             <button id="save-edit">Save Changes</button>
             <button id="cancel-edit">Cancel</button>
         </div>
@@ -60,7 +64,16 @@
             <h2>Monthly Summary</h2>
             <p id="total-spent">Total Spent: ₹0</p>
             <p id="remaining-budget">Remaining Budget: ₹0</p>
+            <div class="download-buttons">
+                <button id="download-csv">Download CSV</button>
+                <button id="download-excel">Download Excel</button>
+            </div>
         </div>
+
+        <!-- <div class="download-reports-section">
+            <h2>Download Reports for All Months</h2>
+            <div id="month-reports-list"></div>
+        </div> -->
 
         <div class="category-breakdown">
             <h2>Expenses by Category</h2>
@@ -83,6 +96,7 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="config.js"></script>
     <script src="scripts.js"></script>
 </body>

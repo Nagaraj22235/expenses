@@ -49,8 +49,14 @@ h2::after {
     border-radius: 2px;
 }
 
-.budget-section, .add-expense-section, .summary-section, .category-breakdown, .expense-list, .month-selection, .edit-expense-section {
+.budget-section, .add-expense-section, .summary-section, .category-breakdown, .expense-list, .month-selection, .edit-expense-section, .download-reports-section {
     margin-bottom: 20px;
+}
+
+.download-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .expense-item {

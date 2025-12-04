@@ -14,14 +14,21 @@ const currentBudgetDisplay = document.getElementById('current-budget');
 const monthSelector = document.getElementById('month-selector');
 const amountInput = document.getElementById('amount');
 const categorySelect = document.getElementById('category');
+const otherCategoryInput = document.getElementById('other-category');
+const expenseDateInput = document.getElementById('expense-date');
 const addExpenseBtn = document.getElementById('add-expense');
 const editSection = document.getElementById('edit-section');
 const editAmount = document.getElementById('edit-amount');
 const editCategory = document.getElementById('edit-category');
+const editOtherCategoryInput = document.getElementById('edit-other-category');
+const editExpenseDateInput = document.getElementById('edit-expense-date');
 const saveEditBtn = document.getElementById('save-edit');
 const cancelEditBtn = document.getElementById('cancel-edit');
 const totalSpentDisplay = document.getElementById('total-spent');
 const remainingBudgetDisplay = document.getElementById('remaining-budget');
+const downloadCsvBtn = document.getElementById('download-csv');
+const downloadExcelBtn = document.getElementById('download-excel');
+const monthReportsList = document.getElementById('month-reports-list');
 const categoryList = document.getElementById('category-list');
 const dailyList = document.getElementById('daily-list');
 const expenseList = document.getElementById('expense-list');
@@ -55,6 +62,9 @@ function showAuth() {
 function showApp() {
     authContainer.style.display = 'none';
     appContainer.style.display = 'block';
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    expenseDateInput.value = today;
 }
 
 async function loadData() {
@@ -127,15 +137,20 @@ setBudgetBtn.addEventListener('click', async () => {
 
 addExpenseBtn.addEventListener('click', async () => {
     const amount = parseFloat(amountInput.value);
-    const category = categorySelect.value;
+    const category = getCategoryValue(categorySelect, otherCategoryInput);
+    const selectedDate = expenseDateInput.value;
     if (amount > 0) {
+        if (category === 'other' || !categorySelect.value) {
+            alert('Please select a category.');
+            return;
+        }
         const { data, error } = await supabase
             .from('expenses')
             .insert({
                 user_id: currentUser.id,
                 amount: amount,
                 category: category,
-                date: new Date().toISOString()
+                date: new Date(selectedDate).toISOString()
             })
             .select()
             .single();
@@ -145,6 +160,10 @@ addExpenseBtn.addEventListener('click', async () => {
         }
         expenses.unshift(data);
         amountInput.value = '';
+        otherCategoryInput.value = '';
+        // Reset to today for next entry
+        const today = new Date().toISOString().split('T')[0];
+        expenseDateInput.value = today;
         updateDisplay();
     } else {
         alert('Please enter a valid amount.');
@@ -154,11 +173,17 @@ addExpenseBtn.addEventListener('click', async () => {
 saveEditBtn.addEventListener('click', async () => {
     const amount = parseFloat(editAmount.value);
     if (amount > 0 && editingExpense) {
+        const category = getCategoryValue(editCategory, editOtherCategoryInput);
+        if (category === 'other' || !editCategory.value) {
+            alert('Please select a category.');
+            return;
+        }
         const { error } = await supabase
             .from('expenses')
             .update({
                 amount: amount,
-                category: editCategory.value
+                category: category,
+                date: new Date(editExpenseDateInput.value).toISOString()
             })
             .eq('id', editingExpense.id);
         if (error) {
@@ -166,7 +191,8 @@ saveEditBtn.addEventListener('click', async () => {
             return;
         }
         editingExpense.amount = amount;
-        editingExpense.category = editCategory.value;
+        editingExpense.category = category;
+        editingExpense.date = new Date(editExpenseDateInput.value).toISOString();
         editSection.style.display = 'none';
         editingExpense = null;
         updateDisplay();
@@ -181,6 +207,14 @@ cancelEditBtn.addEventListener('click', () => {
 });
 
 monthSelector.addEventListener('change', updateDisplay);
+
+categorySelect.addEventListener('change', () => {
+    toggleOtherCategoryInput();
+});
+
+editCategory.addEventListener('change', () => {
+    toggleEditOtherCategoryInput();
+});
 
 expenseList.addEventListener('click', async (e) => {
     const target = e.target;
@@ -197,7 +231,8 @@ function editExpense(id) {
     if (!expense) return;
     editingExpense = expense;
     editAmount.value = expense.amount;
-    editCategory.value = expense.category;
+    setCategoryValue(editCategory, editOtherCategoryInput, expense.category);
+    editExpenseDateInput.value = new Date(expense.date).toISOString().split('T')[0];
     editSection.style.display = 'block';
 }
 
@@ -247,6 +282,16 @@ function getFilteredExpenses() {
     });
 }
 
+downloadCsvBtn.addEventListener('click', () => downloadMonthlyReport('csv'));
+downloadExcelBtn.addEventListener('click', () => downloadMonthlyReport('excel'));
+
+monthReportsList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('month-download-btn')) {
+        const month = e.target.dataset.month;
+        downloadMonthlyReportForMonth(month, 'csv'); // Default to CSV for individual month buttons
+    }
+});
+
 function updateDisplay() {
     const filteredExpenses = getFilteredExpenses();
 
@@ -271,7 +316,7 @@ function updateDisplay() {
         const li = document.createElement('li');
         li.className = 'expense-item';
         li.innerHTML = `
-            <div class="expense-info">₹${expense.amount.toFixed(2)} - ${expense.category.charAt(0).toUpperCase() + expense.category.slice(1)} - ${new Date(expense.date).toLocaleDateString()}</div>
+            <div class="expense-info">₹${expense.amount.toFixed(2)} - ${getDisplayCategory(expense.category)} - ${new Date(expense.date).toLocaleDateString()}</div>
             <div class="expense-actions">
                 <button class="edit-btn" data-id="${expense.id}">Edit</button>
                 <button class="delete-btn" data-id="${expense.id}">Delete</button>
@@ -279,4 +324,150 @@ function updateDisplay() {
         `;
         expenseList.appendChild(li);
     });
+
+    // Update month reports list
+    updateMonthReportsList();
+}
+
+function getAllMonths() {
+    const months = new Set();
+    expenses.forEach(expense => {
+        const date = new Date(expense.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        months.add(monthKey);
+    });
+    return Array.from(months).sort().reverse(); // Most recent first
+}
+
+function updateMonthReportsList() {
+    const months = getAllMonths();
+    monthReportsList.innerHTML = months.map(month => {
+        const [year, monthNum] = month.split('-');
+        const monthName = new Date(year, monthNum - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+        return `<button class="month-download-btn" data-month="${month}">Download ${monthName} Report</button>`;
+    }).join('');
+}
+
+function downloadMonthlyReport(format) {
+    const selectedMonth = monthSelector.value;
+    downloadMonthlyReportForMonth(selectedMonth, format);
+}
+
+function downloadMonthlyReportForMonth(monthStr, format = 'csv') {
+    if (!monthStr) return;
+
+    const [year, month] = monthStr.split('-');
+    const filteredExpenses = expenses.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate.getFullYear() === parseInt(year) && expenseDate.getMonth() + 1 === parseInt(month);
+    });
+
+    if (filteredExpenses.length === 0) {
+        alert('No expenses found for this month.');
+        return;
+    }
+
+    const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    if (format === 'csv') {
+        downloadCSV(filteredExpenses, monthName);
+    } else if (format === 'excel') {
+        downloadExcel(filteredExpenses, monthName);
+    }
+}
+
+function downloadCSV(expenses, monthName) {
+    // Format data for CSV
+    const csvHeader = 'Date,Amount,Category\n';
+    const csvData = expenses.map(expense => {
+        const date = new Date(expense.date).toLocaleDateString();
+        const amount = expense.amount.toFixed(2);
+        const category = getDisplayCategory(expense.category);
+        return `${date},${amount},${category}`;
+    }).join('\n');
+
+    const csvContent = csvHeader + csvData;
+
+    // Create and download the file
+    const filename = `expense_report_${monthName.replace(' ', '_')}.csv`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+function downloadExcel(expenses, monthName) {
+    // Prepare data for Excel
+    const data = expenses.map(expense => ({
+        Date: new Date(expense.date).toLocaleDateString(),
+        Amount: parseFloat(expense.amount.toFixed(2)),
+        Category: getDisplayCategory(expense.category)
+    }));
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Expenses');
+
+    // Generate Excel file
+    XLSX.writeFile(workbook, `expense_report_${monthName.replace(' ', '_')}.xlsx`);
+}
+
+// Category toggle functions
+function toggleOtherCategoryInput() {
+    if (categorySelect.value === 'other') {
+        otherCategoryInput.style.display = 'block';
+    } else {
+        otherCategoryInput.style.display = 'none';
+        otherCategoryInput.value = '';
+    }
+}
+
+function toggleEditOtherCategoryInput() {
+    if (editCategory.value === 'other') {
+        editOtherCategoryInput.style.display = 'block';
+    } else {
+        editOtherCategoryInput.style.display = 'none';
+        editOtherCategoryInput.value = '';
+    }
+}
+
+// Get category value with custom logic
+function getCategoryValue(selectElement, textInput) {
+    if (selectElement.value === 'other') {
+        const customCategory = textInput.value.trim();
+        return customCategory ? `other: ${customCategory}` : 'other';
+    }
+    return selectElement.value;
+}
+
+// Get display category from stored value
+function getDisplayCategory(category) {
+    if (category.startsWith('other: ')) {
+        return category.substring(7); // Remove "other: " prefix
+    }
+    return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+// Set category value in select and text input
+function setCategoryValue(selectElement, textInput, category) {
+    if (category.startsWith('other: ')) {
+        selectElement.value = 'other';
+        textInput.value = category.substring(7); // Value after "other: "
+        textInput.style.display = 'block';
+    } else {
+        selectElement.value = category.toLowerCase();
+        textInput.value = '';
+        textInput.style.display = 'none';
+    }
 }
