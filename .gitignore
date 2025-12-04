@@ -5,7 +5,7 @@
 # =============================================
 
 # NEVER commit these files - they contain sensitive credentials
-config.js
+# config.js
 .env
 .env.local
 .env.development.local
