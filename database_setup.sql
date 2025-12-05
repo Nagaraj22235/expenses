@@ -12,7 +12,7 @@ CREATE TABLE expenses (
     id BIGSERIAL PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
-    category TEXT NOT NULL CHECK (category IN ('food', 'travel', 'other')),
+    category TEXT NOT NULL CHECK (LENGTH(TRIM(category)) > 0),
     date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -141,6 +141,17 @@ BEGIN
     GROUP BY b.amount;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================================================
+-- DATABASE MIGRATION FOR UPDATING CATEGORIES (IF EXISTING DATABASE)
+-- =============================================================================
+
+-- Migration to update the category constraint to allow free-form text
+-- Run this in Supabase SQL Editor if you have an existing database
+-- Note: This will update the existing constraint to allow any non-empty category names
+
+-- ALTER TABLE expenses DROP CONSTRAINT expenses_category_check;
+-- ALTER TABLE expenses ADD CONSTRAINT expenses_category_check CHECK (LENGTH(TRIM(category)) > 0);
 
 -- =============================================================================
 -- PERMISSIONS AND GRANTS

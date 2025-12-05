@@ -120,9 +120,29 @@ signUpBtn.addEventListener('click', async () => {
 setBudgetBtn.addEventListener('click', async () => {
     const newBudget = parseFloat(budgetInput.value);
     if (newBudget > 0) {
-        const { error } = await supabase
+        // Check if budget already exists
+        const { data: existingBudget } = await supabase
             .from('budgets')
-            .upsert({ user_id: currentUser.id, amount: newBudget });
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .single();
+
+        let error;
+        if (existingBudget) {
+            // Update existing budget
+            const result = await supabase
+                .from('budgets')
+                .update({ amount: newBudget })
+                .eq('user_id', currentUser.id);
+            error = result.error;
+        } else {
+            // Insert new budget
+            const result = await supabase
+                .from('budgets')
+                .insert({ user_id: currentUser.id, amount: newBudget });
+            error = result.error;
+        }
+
         if (error) {
             alert('Error setting budget: ' + error.message);
             return;
@@ -442,32 +462,42 @@ function toggleEditOtherCategoryInput() {
     }
 }
 
+// Predefined categories that appear in the select dropdown
+const PREDEFINED_CATEGORIES = ['food', 'travel'];
+
 // Get category value with custom logic
 function getCategoryValue(selectElement, textInput) {
     if (selectElement.value === 'other') {
         const customCategory = textInput.value.trim();
-        return customCategory ? `other: ${customCategory}` : 'other';
+        return customCategory || 'other';
     }
     return selectElement.value;
 }
 
 // Get display category from stored value
 function getDisplayCategory(category) {
-    if (category.startsWith('other: ')) {
-        return category.substring(7); // Remove "other: " prefix
-    }
+    // Capitalize first letter
     return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
 // Set category value in select and text input
 function setCategoryValue(selectElement, textInput, category) {
-    if (category.startsWith('other: ')) {
-        selectElement.value = 'other';
-        textInput.value = category.substring(7); // Value after "other: "
-        textInput.style.display = 'block';
-    } else {
-        selectElement.value = category.toLowerCase();
+    const lowerCategory = category.toLowerCase();
+
+    // Check if it's a predefined category
+    if (PREDEFINED_CATEGORIES.includes(lowerCategory)) {
+        selectElement.value = lowerCategory;
         textInput.value = '';
         textInput.style.display = 'none';
+    } else if (lowerCategory === 'other' || !category.trim()) {
+        // If category is 'other' or empty, show empty 'other' input
+        selectElement.value = 'other';
+        textInput.value = '';
+        textInput.style.display = 'block';
+    } else {
+        // It's a custom category, so set it as 'other' with the custom value
+        selectElement.value = 'other';
+        textInput.value = category;
+        textInput.style.display = 'block';
     }
 }
